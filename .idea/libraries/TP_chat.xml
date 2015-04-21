@@ -1,0 +1,9 @@
+<component name="libraryTable">
+  <library name="TP_chat">
+    <CLASSES>
+      <root url="jar://$PROJECT_DIR$/dist/TP_chat.jar!/" />
+    </CLASSES>
+    <JAVADOC />
+    <SOURCES />
+  </library>
+</component>
