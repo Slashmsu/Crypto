@@ -19,8 +19,6 @@ import java.util.logging.Logger;
 
 
 
-
-// Class to manage Client chat Box.
 public class ChatClient {
 
     /** Chat client access */
@@ -37,13 +35,12 @@ public class ChatClient {
         }
 
         /** Create socket, and receiving thread */
-        public ChatAccess(String server, int port) throws IOException {
+        public ChatAccess(String server, int port, final String secretKey) throws IOException {
             socket = new Socket(server, port);
             outputStream = socket.getOutputStream();
             is =  new DataInputStream(socket.getInputStream());
-            
+
             Thread receivingThread = new Thread() {
-                int numberOfBytesReceived = 0;
                 @Override
                 public void run() {
                     try {
@@ -52,23 +49,21 @@ public class ChatClient {
                         BigInteger d, e,N,phi;
 
                         e = receiveBiginteger(line, reader, "E received");
-                         send("E received");
+                        send("E received");
                         N = receiveBiginteger(line, reader, "N received");
-                         send("N received");
+                        send("N received");
                         phi = receiveBiginteger(line, reader, "phi received");
                         send("phi received");
 
                         d = e.modInverse(phi);
                         System.out.println(d);
                         send(d.toString());
+                        System.out.print(secretKey);
 
-                        String key = JOptionPane.showInputDialog("Enter session secret");
-
-                        System.out.println("Encrypting String: " + md5(key));
-                        System.out.println("String in Bytes: " + bytesToString(md5(key).getBytes()));
-
-                        // encrypt
-                        byte[] encrypted = encrypt(md5(key).getBytes(),e, N);
+                        System.out.println("Encrypting String: " + md5(secretKey));
+                        System.out.println("String in Bytes: " + bytesToString(md5(secretKey).getBytes()));
+// encrypt
+                        byte[] encrypted = encrypt(md5(secretKey).getBytes(),e, N);
                         System.out.println("Encrypted String in Bytes: " + bytesToString(encrypted));
 
                         // decrypt
@@ -77,14 +72,7 @@ public class ChatClient {
 
                         System.out.println("Decrypted String: " + new String(decrypted));
                         sendByteArray(encrypted);
-                        key = md5(key);
-//                        byte[] encrypted = encrypt("1a25s8fe5dsg65ad".getBytes(), e, N);
-//                        System.out.println("String in Bytes: " + bytesToString("1a25s8fe5dsg65ad".getBytes()));
-//                        System.out.println(encrypted);
-//
-//                        byte[] decrypted =  decrypt(encrypted,d,N);
-//                        System.out.println("Decrypted String in Bytes: " +  bytesToString(decrypted));
-//                        sendByteArray(encrypted);
+                        key = md5(secretKey);
 
                         // Action for send user's nick name
                         String name = JOptionPane.showInputDialog("Enter your nick name");
@@ -92,44 +80,43 @@ public class ChatClient {
 
                         int temp=0;
                         while (true)
-                          {
-                              line = reader.readLine();
-                              System.out.println("Line = " + temp);
-                              if(temp >= 4)
-                              {
-                                  System.out.println("1");
-                                  break;
-                              }
-                              else
-                              {
-                                  temp++;
-                                  System.out.println("2");
-                                  notifyObservers(line);
-                              }
-                          }
+                        {
+                            line = reader.readLine();
+                            System.out.println("Line = " + temp);
+                            if(temp >= 4)
+                            {
+                                break;
+                            }
+                            else
+                            {
+                                temp++;
+                                System.out.println("2");
+                                notifyObservers(line);
+                            }
+                        }
                         System.out.println("Start chating");
                     } catch (IOException ex) {
                         notifyObservers(ex);
                     }
-                    
+
                     byte[] encryptedTextInBytesFromServer = new byte[1024];
 
                     while(true)
-                           {
-                            try {
-                                int numberOfBytesReceived = is.read(encryptedTextInBytesFromServer);
+                    {
+                        try {
+                            int numberOfBytesReceived = is.read(encryptedTextInBytesFromServer);
 
-                                System.out.println("number of bits: " + numberOfBytesReceived);
-                                byte[] dec = AES.decrypt(Arrays.copyOfRange(encryptedTextInBytesFromServer, 0, numberOfBytesReceived), key.getBytes());
-                                System.out.println("3");
+                            System.out.println("number of bits: " + numberOfBytesReceived);
+                            byte[] dec = AES.decrypt(Arrays.copyOfRange(encryptedTextInBytesFromServer, 0, numberOfBytesReceived), key.getBytes());
+                            System.out.println("3");
 
-                                String line = new String(dec);
-                                notifyObservers(line);
-                                System.out.println("Text decripted text now!!!!!: " + line);
-                            } catch (IOException ex) {
-                                Logger.getLogger(ChatClient.class.getName()).log(Level.SEVERE, null, ex);
-                            }
-                           }
+                            String line = new String(dec);
+                            notifyObservers(line);
+                            System.out.println("Text decripted text now!!!!!: " + line);
+                        } catch (IOException ex) {
+                            Logger.getLogger(ChatClient.class.getName()).log(Level.SEVERE, null, ex);
+                        }
+                    }
                 }
             };
             receivingThread.start();
@@ -190,12 +177,12 @@ public class ChatClient {
         /** Send a line of text */
         public void sendCrypto(String text) {
             try {
-                    text+=CRLF;
-                    System.out.println("Text clar: " + text);
-                    byte[] enc = AES.encrypt(text.getBytes(), key.getBytes());
-                    System.out.println("Text cripted text by AES: "+ new String(enc));
-                    System.out.println("Encrypted text getBytes()" + enc);
-                    
+                text+=CRLF;
+                System.out.println("Text clar: " + text);
+                byte[] enc = AES.encrypt(text.getBytes(), key.getBytes());
+                System.out.println("Text cripted text by AES: "+ new String(enc));
+                System.out.println("Encrypted text getBytes()" + enc);
+
                 outputStream.write(enc);
                 outputStream.flush();
             } catch (IOException ex) {
@@ -298,33 +285,34 @@ public class ChatClient {
             final Object finalArg = arg;
             SwingUtilities.invokeLater(new Runnable() {
                 public void run() {
-                   
-                   System.out.println("recieved text: " + finalArg);
+
+                    System.out.println("recieved text: " + finalArg);
                     textArea.append(finalArg.toString());
                     textArea.append("\n");
                 }
             });
         }
-        
+
     }
 
     public static void main(String[] args) {
         String server = args[0];
+        String secretKey = args[1];
 
         int port = 2222;
         ChatAccess access = null;
 
         try {
-            access = new ChatAccess(server, port);
-            access.key = "1a25s8fe5dsg65ad";
+
+            access = new ChatAccess(server, port, secretKey);
+
         } catch (IOException ex) {
             System.out.println("Cannot connect to " + server + ":" + port);
             ex.printStackTrace();
             System.exit(0);
         }
-        
+
         JFrame frame = new ChatFrame(access);
-////        frame.setTitle("My diploma chat - connected to " + server + ":" + port);
         frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         frame.pack();
         frame.setLocationRelativeTo(null);
@@ -332,3 +320,4 @@ public class ChatClient {
         frame.setVisible(true);
     }
 }
+
